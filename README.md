@@ -1,19 +1,25 @@
 # Vaultwarden Install
 
-This document provides scripts that can be utilised to easily set up a [Vaultwarden](https://github.com/dani-garcia/vaultwarden) instance with sqlite directly on a linux machine (without docker).
+This document provides scripts that can be utilised to easily set up a [Vaultwarden](https://github.com/dani-garcia/vaultwarden)
+instance with sqlite directly on a `aarch64 (ARMv8)` machine (without docker).
 
-Additionally, it provides a guide that can be followed step by step for building and deploying a Vaultwarden instance. The guide assumes you already have an instance of a Pi you can connect to and assumes you are using linux.
+Additionally, it provides a guide that can be followed step by step for building and deploying a Vaultwarden instance.
+The guide assumes you already have an ready Pi you can connect to and assumes you are using linux on the main machine.
 Parts of it are taken from [this guide](https://gist.github.com/avoidik/9f12ef4feae6ccf7a5801a520931c5d1) for which I am forever grateful.
 
-We will primarily focus on the `aarch64` architecture, but the same principles apply for any.
+We will primarily focus on the `aarch64` architecture, but the same principles apply for any. Do note that if you are compiling for different architectures
+the scripts will not work, however they can be modified to suit your needs.
 
-Tested on Orange Pi Zero2.
+## Scripts
+
+Tested on Orange Pi Zero2 and Zero3.
 
 ## Compiling the binary
 
 We'll be compiling the binary on our main machine, for which we will need [rust. 🦀](https://www.rust-lang.org/tools/install)
 
-Since we are focusing on `aarch64`, we have to add it to `rustup`'s target list as well as make sure we have the necessary compilation plumbing for it.
+Since we are focusing on `aarch64`, we have to add it to `rustup`'s target list as well as make sure we have
+the necessary compilation plumbing for it.
 
 The first command adds the target, the second one installs dependencies needed to cross compile
 
@@ -47,13 +53,18 @@ cd vaultwarden
 Now we have to cross our fingers and run
 
 ```bash
-cargo build -F sqlite -F vendored_openssl --target=aarch64-unknown-linux-gnu --release 
+cargo build -F sqlite -F vendored_openssl --target=aarch64-unknown-linux-gnu --release
 ```
 
 This builds the binary with sqlite as the database backend (adjust it accordingly) and more importantly uses the vendored feature of OpenSSL which
-makes sure it is statically compiled.
+makes sure it is statically compiled. The compilation might take a few minutes.
 
 If all we see is green messages and then a "finished", it means we have successfully built vaultwarden! It's smooth sailing from here.
+All that's left to do on the main machine for now is to transfer the binary to the remote (pie)
+
+```bash
+scp target/aarch64-unknown-linux-gnu/release/vaultwarden root@<PIE_IP>:
+```
 
 ## Infrastructure
 
@@ -61,29 +72,25 @@ Time to switch to the pie.
 
 We assume we are root.
 
+## Create files
+
 Create necessary directories
-  
+
 ```bash
-mkdir -p /opt/vaultwarden/bin /opt/vaultwarden/data
+mkdir -p /opt/vaultwarden/bin
+mkdir /opt/vaultwarden/data
 ```
 
-From the main machine, copy the binary to the pie (assuming we are in the directory where we built vaultwarden)
+Download and unpack web vault (check latest available version [here](https://github.com/dani-garcia/bw_web_builds/releases))
 
 ```bash
-scp target/aarch64-unknown-linux-gnu/release/vaultwarden root@<PIE_IP>:/opt/vaultwarden/bin/vaultwarden
-```
-
-Back to the pie, download and unpack web vault (check latest available version [here](https://github.com/dani-garcia/bw_web_builds/releases))
-
-```bash
-curl -fsSLO https://github.com/dani-garcia/bw_web_builds/releases/download/v2023.12.0/bw_web_v2023.12.0.tar.gz 
+curl -fsSLO https://github.com/dani-garcia/bw_web_builds/releases/download/v2023.12.0/bw_web_v2023.12.0.tar.gz
 tar -zxf bw_web_v2023.12.0.tar.gz -C /opt/vaultwarden/
 rm -f bw_web_v2023.12.0.tar.gz
 ```
 
 Create `/opt/vaultwarden/.env` (see more options [here](https://github.com/dani-garcia/vaultwarden/blob/main/.env.template) or in the admin panel)
 
-TODO add admin token
 ```.env
 DATA_FOLDER=/opt/vaultwarden/data/
 DATABASE_MAX_CONNS=10
@@ -97,6 +104,44 @@ WEBSOCKET_PORT=3012
 DOMAIN=https://<PIE_IP>:6060
 ```
 
+Create a secure admin token with argon2 and append it to the `.env` file
+
+```bash
+echo -n "MySecretPassword" | argon2 "$(openssl rand -base64 32)" -e -id -k 65540 -t 3 -p 4r >> /opt/vaultwarden/.env
+```
+
+### Enable TLS
+
+Download and install mkcert, a simple utility for making CAs and certs.
+
+```bash
+curl -fsSL https://github.com/FiloSottile/mkcert/releases/download/v1.4.3/mkcert-v1.4.3-linux-arm -o /usr/local/bin/mkcert
+chmod +x /usr/local/bin/mkcert
+mkcert -install
+update-ca-certificates
+```
+
+Create the directory and certificates
+
+```bash
+mkdir /opt/vaultwarden/cert
+mkcert -cert-file /opt/vaultwarden/cert/rocket.pem -key-file /opt/vaultwarden/cert/rocket-key.pem <PIE_IP> <PIE_IP>
+```
+
+Verify the cert
+
+```bash
+openssl verify -verbose -CAfile /root/.local/share/mkcert/rootCA.pem /opt/vaultwarden/cert/rocket.pem
+```
+
+Add the cert and key to `.env`
+
+```bash
+echo "ROCKET_TLS={certs="'"'"/opt/vaultwarden/cert/rocket.pem"'"'",key="'"'"/opt/vaultwarden/cert/rocket-key.pem"'"'"}" >> /opt/vaultwarden/.ent
+```
+
+### Add user, group, and systemd service
+
 Add the user and group
 
 ```bash
@@ -104,7 +149,7 @@ addgroup --system vaultwarden
 adduser --system --home /opt/vaultwarden --shell /usr/sbin/nologin --no-create-home --gecos 'vaultwarden' --ingroup vaultwarden --disabled-login --disabled-password vaultwarden
 ```
 
-Assign the necessay permissions
+Assign the necessary permissions
 
 ```bash
 chown -R vaultwarden:vaultwarden /opt/vaultwarden/
@@ -163,6 +208,17 @@ journalctl -xeu vaultwarden.service
 
 If the rocket has launched we're good to go! Head on over to `<PIE_IP>:<VW_PORT>/admin`.
 
-# Create secure Admin Token
-TODO: make the script read this from a user
-echo -n "MySecretPassword" | argon2 "$(openssl rand -base64 32)" -e -id -k 65540 -t 3 -p 4r
+## Clients and CA
+
+To make clients trust the certificate we just generated, they need to trust the local CA created by mkcert.
+On your pie, you can execute
+
+```bash
+ls /usr/local/share/ca-certificates/
+```
+
+and then cat the certificate.
+
+On your main machine create a `/usr/share/ca-certificates/mkcert_pie.crt` file with the contents of the certificate, then run `sudo update-ca-certificates`. You might also manually have to add the certificate in certain browsers.
+
+On mobile devices, follow instructions on how to configure trusted CAs for your device. This [link](https://support.google.com/pixelphone/answer/2844832?hl=en) could help you out for android.
