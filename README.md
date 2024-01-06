@@ -36,9 +36,9 @@ Tested on Linux Ubuntu 22.04 for the main machine and Orange Pi Zero2 and Zero3 
    bash <(curl https://raw.githubusercontent.com/biblius/vaultwarden-install/master/vw-install.sh) /path/to/binary
    ```
 
-4. [Uninstall Vaultwarden]
+4. Uninstall Vaultwarden
 
-   On your remote, run the following script. It will purge all files and user configuration from the device. mkcert and argon will
+   On your remote, run the following script. It will purge all files and user configuration from the device created by the first 2 scripts. mkcert and argon will
    have to be removed manually.
    ```bash
    bash <(curl https://raw.githubusercontent.com/biblius/vaultwarden-install/master/vw-purge.sh)
