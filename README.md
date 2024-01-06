@@ -12,9 +12,41 @@ the scripts will not work, however they can be modified to suit your needs.
 
 ## Scripts
 
-Tested on Orange Pi Zero2 and Zero3.
+Tested on Linux Ubuntu 22.04 for the main machine and Orange Pi Zero2 and Zero3 as the remotes.
 
-## Compiling the binary
+1. [Compiling the binary](#compiling-the-binary)
+   
+   On your main machine, run the following script. It performs all steps listed in the section.
+   ```bash
+    bash <(curl https://raw.githubusercontent.com/biblius/vaultwarden-install/master/vw-compile.sh) 
+    ```
+   
+2. Transfer the binary
+   
+   Not a script, but ensure you have the generated binary on the remote by copying it to wherever you want (this examples copies to root home)
+   ```bash
+   scp vaultwarden/target/aarch64-unknown-linux-gnu/release/vaultwarden root@<PIE_IP>:
+   ```
+
+3. [Deploy Vaultwarden](#infrastructure)
+
+   On your remote, run the following script. It performs all steps listed in the section and prompts you for some params.
+   Change the `/path/to/binary` to wherever the vaultwarden server binary is located.
+   ```bash
+   bash <(curl https://raw.githubusercontent.com/biblius/vaultwarden-install/master/vw-install.sh) /path/to/binary
+   ```
+
+5. [Uninstall Vaultwarden]
+
+   On your remote, run the following script. It will purge all files and user configuration from the device. mkcert and argon will
+   have to be removed manually.
+   ```bash
+   bash <(curl https://raw.githubusercontent.com/biblius/vaultwarden-install/master/vw-purge.sh)
+   ```
+
+## Guide
+
+### Compiling the binary
 
 We'll be compiling the binary on our main machine, for which we will need [rust. 🦀](https://www.rust-lang.org/tools/install)
 
@@ -66,13 +98,13 @@ All that's left to do on the main machine for now is to transfer the binary to t
 scp target/aarch64-unknown-linux-gnu/release/vaultwarden root@<PIE_IP>:
 ```
 
-## Infrastructure
+### Infrastructure
 
 Time to switch to the pie.
 
 We assume we are root.
 
-### Create files
+#### Create files
 
 Create necessary directories
 
@@ -110,7 +142,7 @@ Create a secure admin token with argon2 and append it to the `.env` file
 echo -n "MySecretPassword" | argon2 "$(openssl rand -base64 32)" -e -id -k 65540 -t 3 -p 4r >> /opt/vaultwarden/.env
 ```
 
-### Enable TLS
+#### Enable TLS
 
 Download and install mkcert, a simple utility for making CAs and certs.
 
@@ -140,7 +172,7 @@ Add the cert and key to `.env`
 echo "ROCKET_TLS={certs="'"'"/opt/vaultwarden/cert/rocket.pem"'"'",key="'"'"/opt/vaultwarden/cert/rocket-key.pem"'"'"}" >> /opt/vaultwarden/.ent
 ```
 
-### Add user, group, and systemd service
+#### Add user, group, and systemd service
 
 Add the user and group
 
@@ -208,7 +240,7 @@ journalctl -xeu vaultwarden.service
 
 If the rocket has launched we're good to go! Head on over to `<PIE_IP>:<VW_PORT>/admin`.
 
-## Clients and CA
+### Clients and CA
 
 To make clients trust the certificate we just generated, they need to trust the local CA created by mkcert.
 On your pie, you can execute
