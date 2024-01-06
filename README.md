@@ -95,7 +95,7 @@ If all we see is green messages and then a "finished", it means we have successf
 All that's left to do on the main machine for now is to transfer the binary to the remote (pie)
 
 ```bash
-scp target/aarch64-unknown-linux-gnu/release/vaultwarden root@<PIE_IP>:
+scp vaultwarden/target/aarch64-unknown-linux-gnu/release/vaultwarden root@<PIE_IP>:
 ```
 
 ### Infrastructure
