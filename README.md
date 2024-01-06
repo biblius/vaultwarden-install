@@ -1,7 +1,7 @@
 # Vaultwarden Install
 
 This document provides scripts that can be utilised to easily set up a [Vaultwarden](https://github.com/dani-garcia/vaultwarden)
-instance with sqlite directly on a `aarch64 (ARMv8)` machine (without docker).
+instance with sqlite directly on a `aarch64 (ARMv8)` machine (without docker) using a self signed certificate for TLS.
 
 Additionally, it provides a guide that can be followed step by step for building and deploying a Vaultwarden instance.
 The guide assumes you already have an ready Pi you can connect to and assumes you are using linux on the main machine.
@@ -36,7 +36,7 @@ Tested on Linux Ubuntu 22.04 for the main machine and Orange Pi Zero2 and Zero3 
    bash <(curl https://raw.githubusercontent.com/biblius/vaultwarden-install/master/vw-install.sh) /path/to/binary
    ```
 
-5. [Uninstall Vaultwarden]
+4. [Uninstall Vaultwarden]
 
    On your remote, run the following script. It will purge all files and user configuration from the device. mkcert and argon will
    have to be removed manually.
