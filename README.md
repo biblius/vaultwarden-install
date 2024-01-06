@@ -72,7 +72,7 @@ Time to switch to the pie.
 
 We assume we are root.
 
-## Create files
+### Create files
 
 Create necessary directories
 
