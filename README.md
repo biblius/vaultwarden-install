@@ -169,7 +169,7 @@ openssl verify -verbose -CAfile /root/.local/share/mkcert/rootCA.pem /opt/vaultw
 Add the cert and key to `.env`
 
 ```bash
-echo "ROCKET_TLS={certs="'"'"/opt/vaultwarden/cert/rocket.pem"'"'",key="'"'"/opt/vaultwarden/cert/rocket-key.pem"'"'"}" >> /opt/vaultwarden/.ent
+echo "ROCKET_TLS={certs="'"'"/opt/vaultwarden/cert/rocket.pem"'"'",key="'"'"/opt/vaultwarden/cert/rocket-key.pem"'"'"}" >> /opt/vaultwarden/.env
 ```
 
 #### Add user, group, and systemd service
